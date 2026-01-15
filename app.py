@@ -47,18 +47,26 @@ if uploaded_file is not None:
     fps = int(video_cap.get(cv2.CAP_PROP_FPS))
     frame_count = int(video_cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    # Use 'avc1' (which is the internal name for H.264 that OpenCV understands better)
-    # or 'mp4v' as a fallback.
-    output_path = "processed_swing.mp4"
-    fourcc = cv2.VideoWriter_fourcc(*'avc1') 
-    
-    out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
-    # ADD THIS SAFETY CHECK right after creating 'out':
-    if not out.isOpened():
-        # If avc1 fails, use mp4v (built into almost every version of OpenCV)
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+
+    
+
+    # 1. Try 'mp4v' - This is the most compatible with OpenCV's internal ffmpeg
+    output_path = "analyzed_swing.mp4"
+    
+    # Try multiple codecs in order of reliability for cloud environments
+    codecs = ['mp4v', 'XVID', 'MJPG']
+    out = None
+
+    for codec in codecs:
+        fourcc = cv2.VideoWriter_fourcc(*codec)
         out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+        if out.isOpened():
+            break
+            
+    if not out or not out.isOpened():
+        st.error("Could not initialize video encoder on the server. Try a different video format.")
+        st.stop()
 
     # UI Feedback
     progress_bar = st.progress(0)
@@ -127,3 +135,4 @@ if uploaded_file is not None:
         # Clean up temp files
         os.remove(tfile.name)
         os.remove(output_path)
+
