@@ -1,91 +1,3 @@
-# import streamlit as st
-# import mediapipe as mp
-# import cv2
-# import numpy as np
-# import tempfile
-# import os
-
-# # 1. Initialize MediaPipe Pose
-# mp_pose = mp.solutions.pose
-# mp_drawing = mp.solutions.drawing_utils
-# pose = mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5)
-
-# def calculate_angle(a, b, c):
-#     """Calculates the angle between three points (a is the vertex)"""
-#     a = np.array(a) # First point (e.g., Shoulder)
-#     b = np.array(b) # Mid point (e.g., Hip)
-#     c = np.array(c) # End point (e.g., Knee)
-    
-#     radians = np.arctan2(c[1]-b[1], c[0]-b[0]) - np.arctan2(a[1]-b[1], a[0]-b[0])
-#     angle = np.abs(radians*180.0/np.pi)
-    
-#     if angle > 180.0:
-#         angle = 360-angle
-#     return angle
-
-# # 2. Streamlit UI Setup
-# st.set_page_config(page_title="Golf AI Pro", page_icon="⛳")
-# st.title("⛳ AI Golf Swing Analyzer")
-# st.markdown("""
-# **1-Hour Sprint Project**: Upload a face-on swing video. 
-# The AI will map your joints and calculate your lead-arm/shoulder rotation.
-# """)
-
-# # Sidebar instructions
-# with st.sidebar:
-#     st.header("Instructions")
-#     st.write("1. Record a video on your phone (Face-on view).")
-#     st.write("2. Upload the file here.")
-#     st.write("3. Watch the AI trace your mechanics.")
-
-# uploaded_file = st.file_uploader("Upload your swing (MP4, MOV)", type=['mp4', 'mov', 'avi'])
-
-# if uploaded_file is not None:
-#     # Use a temp file to store the upload so OpenCV can read it
-#     tfile = tempfile.NamedTemporaryFile(delete=False) 
-#     tfile.write(uploaded_file.read())
-    
-#     video_cap = cv2.VideoCapture(tfile.name)
-#     st_frame = st.empty() # Placeholder for the processing loop
-
-#     # Processing loop
-#     while video_cap.isOpened():
-#         ret, frame = video_cap.read()
-#         if not ret:
-#             break
-
-#         # Convert to RGB for MediaPipe
-#         image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-#         results = pose.process(image)
-
-#         # Draw landmarks
-#         if results.pose_landmarks:
-#             mp_drawing.draw_landmarks(
-#                 image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS,
-#                 mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=2),
-#                 mp_drawing.DrawingSpec(color=(0, 0, 255), thickness=2, circle_radius=2)
-#             )
-
-#             # DATA SCIENCE METRIC: Lead Arm Angle
-#             # Landmarks: 11 (L Shoulder), 13 (L Elbow), 15 (L Wrist)
-#             landmarks = results.pose_landmarks.landmark
-#             l_shoulder = [landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].x, landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].y]
-#             l_elbow = [landmarks[mp_pose.PoseLandmark.LEFT_ELBOW.value].x, landmarks[mp_pose.PoseLandmark.LEFT_ELBOW.value].y]
-#             l_wrist = [landmarks[mp_pose.PoseLandmark.LEFT_WRIST.value].x, landmarks[mp_pose.PoseLandmark.LEFT_WRIST.value].y]
-            
-#             angle = calculate_angle(l_shoulder, l_elbow, l_wrist)
-            
-#             # Display angle on frame
-#             cv2.putText(image, f"Arm Angle: {int(angle)}deg", 
-#                         tuple(np.multiply(l_elbow, [image.shape[1], image.shape[0]]).astype(int)), 
-#                         cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
-
-#         # Display the processed frame
-#         st_frame.image(image, channels="RGB", use_container_width=True)
-
-#     video_cap.release()
-#     st.success("Analysis Complete!")
-
 import streamlit as st
 import mediapipe as mp
 import cv2
@@ -135,10 +47,18 @@ if uploaded_file is not None:
     fps = int(video_cap.get(cv2.CAP_PROP_FPS))
     frame_count = int(video_cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    # Output file setup - using H264 for web compatibility
-    output_path = "analyzed_swing.mp4"
-    fourcc = cv2.VideoWriter_fourcc(*'H264') 
+    # Use 'avc1' (which is the internal name for H.264 that OpenCV understands better)
+    # or 'mp4v' as a fallback.
+    output_path = "processed_swing.mp4"
+    fourcc = cv2.VideoWriter_fourcc(*'avc1') 
+    
     out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+
+    # ADD THIS SAFETY CHECK right after creating 'out':
+    if not out.isOpened():
+        # If avc1 fails, use mp4v (built into almost every version of OpenCV)
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
     # UI Feedback
     progress_bar = st.progress(0)
